@@ -173,6 +173,25 @@ Notes:
 - Journey Guide requirements are loaded from `data/journey_guide_requirements.json`.
 - Update that file any time requirements change in-game.
 
+### Galactic Legend Path Advisor
+
+Rank only Galactic Legend unlock paths for your roster:
+
+```powershell
+uv run gl-path <ally_code>
+```
+
+Options:
+```powershell
+uv run gl-path 123-456-789 --top 5
+uv run gl-path 123-456-789 --target "Jedi Master Kenobi"
+uv run gl-path 123-456-789 --owned-only
+```
+
+Notes:
+- GL-only requirements are loaded from `data/gl_requirements.json`.
+- Update that file any time requirements change in-game.
+
 ## Discord Bot
 
 The project includes an optional Discord bot that exposes all commands as slash commands.

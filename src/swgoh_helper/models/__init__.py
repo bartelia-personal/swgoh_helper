@@ -127,6 +127,15 @@ from .journey_guide import (
     UnitRuleV2,
 )
 
+# Galactic Legend Pathing
+from .galactic_legend import (
+    GLRequirement,
+    GLPathDefinition,
+    GLRequirementProgress,
+    GLPathScore,
+    GLPathReport,
+)
+
 __all__ = [
     # Enums
     "CombatType",
@@ -231,4 +240,10 @@ __all__ = [
     "UnitExprV2",
     "UnitFilterV2",
     "UnitRuleV2",
+    # Galactic Legend Pathing
+    "GLRequirement",
+    "GLPathDefinition",
+    "GLRequirementProgress",
+    "GLPathScore",
+    "GLPathReport",
 ]

@@ -45,6 +45,7 @@ MAX_PLAYERS_PER_UNIT = 20  # Max players to show per unit in farming recommendat
 
 # Journey guide path planning
 JOURNEY_GUIDE_REQUIREMENTS_FILENAME = "journey_guide_requirements.json"
+GL_REQUIREMENTS_FILENAME = "gl_requirements.json"
 UNOWNED_UNIT_PENALTY = 15.0
 
 # Limited-availability policy
