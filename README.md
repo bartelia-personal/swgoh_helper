@@ -210,3 +210,33 @@ Slash commands generally mirror CLI parameters (ally code, max-phase, etc.).
 
 API responses are cached in `data/` for 1 hour. Delete the folder to force a refresh.
 - Player ally codes must be synced with SWGOH.gg
+
+## Campaign And Relic Data Refresh Workflow
+
+The generated files below are used for farming and relic planning:
+
+- `data/campaign_nodes.json`
+- `data/character_farms.json`
+- `data/relic_materials.json`
+
+Planning modes used by this project:
+
+- `base`: best-attempt, node-only approach (no store or guild-event assumptions)
+- `manual`: base approach plus account-specific purchases and guild-event income
+
+Refresh cadence:
+
+1. Refresh monthly.
+2. Refresh after any in-game economy/drop-table/store change.
+
+Refresh process:
+
+1. Verify latest data on swgoh.wiki pages for Cantina, LS, DS, Fleet, and Relic Amplifier.
+2. Update constants in `scripts/build_campaign_data.py`.
+3. Regenerate files with:
+   ```powershell
+   uv run python scripts/build_campaign_data.py
+   ```
+4. Review diffs in all three data files for drift.
+5. Spot-check high-impact entries (R8-R10 mats, signal data, top fleet nodes).
+6. Update reports that depend on these files.
