@@ -26,6 +26,7 @@ from .rote_bottleneck_analyzer import BottleneckAnalyzer
 from .rote_presenter import RotePresenter
 from .rote_bonus_readiness import BonusReadinessAnalyzer
 from .journey_guide_advisor import JourneyGuideAdvisor
+from .mod_recommender import ModRecommender
 from .exceptions import AppExecutionError
 
 dotenv.load_dotenv()
@@ -504,6 +505,28 @@ class JourneyGuidePathApp:
 GalacticLegendPathApp = JourneyGuidePathApp
 
 
+class ModAuditApp:
+    """Application for auditing equipped mods on key squads."""
+
+    def __init__(self, api_key: str, progress: Optional[ProgressNotifier] = None):
+        self.progress = progress or ProgressNotifier()
+        self.service = SwgohDataService(api_key, progress=self.progress)
+        self.recommender = ModRecommender()
+
+    def analyze_player(self, ally_code: str, top_n: int = 10) -> str:
+        """Audit a player's equipped mods and rank the biggest gaps."""
+        try:
+            self.progress.update(f"Fetching player data for ally code: {ally_code}...")
+            player_data = self.service.get_player(ally_code)
+            self.progress.update("Auditing equipped mods for prioritized squads...")
+            report = self.recommender.analyze(player_data)
+            return self.recommender.format_report(report, top_n=top_n)
+        except requests.exceptions.RequestException as e:
+            raise AppExecutionError(f"Error fetching data: {e}") from e
+        except Exception as e:
+            raise AppExecutionError(f"Error: {e}") from e
+
+
 def print_usage():
     """Print usage information."""
     print("Usage: python app.py <command> [arguments]")
@@ -581,6 +604,7 @@ def print_usage():
     print("  python app.py rote_farm 123-456-789 --max-phase 4")
     print("  python app.py journey-guide 123-456-789 --top 5")
     print('  python app.py journey-guide 123-456-789 --target "Jedi Master Kenobi"')
+    print("  python app.py mod-audit 123-456-789 --top 8")
 
 
 def run_kyrotech():
@@ -917,6 +941,39 @@ def run_journey_guide():
         sys.exit(1)
 
 
+def run_mod_audit():
+    """Entry point for mod-audit CLI command."""
+    if len(sys.argv) < 2:
+        print("Usage: mod-audit <ally_code> [--top N]")
+        sys.exit(1)
+
+    if not SWGOH_API_KEY:
+        print("Error: SWGOH_API_KEY not found in environment variables")
+        print("Please create a .env file with your API key")
+        sys.exit(1)
+
+    ally_code = sys.argv[1]
+    top_n = 10
+    i = 2
+
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "--top" and i + 1 < len(sys.argv):
+            top_n = int(sys.argv[i + 1])
+            i += 2
+            continue
+        i += 1
+
+    app = ModAuditApp(SWGOH_API_KEY)
+    try:
+        output = app.analyze_player(ally_code=ally_code, top_n=top_n)
+        print(output)
+    except AppExecutionError as e:
+        print(str(e))
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     """Main entry point for the application."""
     if len(sys.argv) < 2:
@@ -937,6 +994,8 @@ def main():
         "journey-guide": run_journey_guide,
         "gl_path": run_journey_guide,
         "gl-path": run_journey_guide,
+        "mod_audit": run_mod_audit,
+        "mod-audit": run_mod_audit,
     }
 
     handler = handlers.get(command)

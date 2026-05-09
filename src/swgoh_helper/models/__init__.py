@@ -127,6 +127,9 @@ from .journey_guide import (
     UnitRuleV2,
 )
 
+# Mod audit
+from .mods import ModAuditProfile, ModAuditFinding, ModAuditUnitResult, ModAuditReport
+
 __all__ = [
     # Enums
     "CombatType",
@@ -231,4 +234,9 @@ __all__ = [
     "UnitExprV2",
     "UnitFilterV2",
     "UnitRuleV2",
+    # Mod audit
+    "ModAuditProfile",
+    "ModAuditFinding",
+    "ModAuditUnitResult",
+    "ModAuditReport",
 ]

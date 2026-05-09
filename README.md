@@ -173,6 +173,34 @@ Notes:
 - Journey Guide requirements are loaded from `data/journey_guide_requirements.json`.
 - Update that file any time requirements change in-game.
 
+### Mod Audit
+
+Audit equipped mods on your highest-priority squads and rank the biggest gaps:
+
+```powershell
+uv run mod-audit <ally_code>
+```
+
+Options:
+```powershell
+uv run mod-audit 123-456-789 --top 8
+```
+
+The current audit focuses on prioritized squads already covered by this repo's progression advice:
+- Phoenix / Captain Rex
+- Bounty Hunters
+- Empire
+- First Order
+- Imperial Troopers
+
+It reports:
+- missing equipped mods
+- missing recommended set combinations
+- mismatched primaries on key slots
+- speed shortfalls for units that need to move first
+
+If the player API/cache returns sparse mod data, the report flags the result as a partial audit.
+
 ## Discord Bot
 
 The project includes an optional Discord bot that exposes all commands as slash commands.
