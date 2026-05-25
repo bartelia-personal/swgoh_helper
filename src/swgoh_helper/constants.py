@@ -203,6 +203,13 @@ MOD_AUDIT_PROFILES = {
         "priority_stats": ["Protection", "Health", "Defense", "Speed"],
         "speed_floor": 180,
     },
+    "GRANDMOFFTARKIN": {
+        "squad": "Empire",
+        "target_sets": ["Speed", "Potency"],
+        "recommended_primaries": {3: "Speed", 5: "Protection", 6: "Protection", 7: "Potency"},
+        "priority_stats": ["Speed", "Potency", "Protection", "Health"],
+        "speed_floor": 250,
+    },
     "GENERALHUX": {
         "squad": "First Order",
         "target_sets": ["Speed", "Health"],
@@ -324,3 +331,207 @@ MOD_ASSIGNMENT_PRIORITY = [
         "reason": "premium speed set after the primary turn-meter engines are handled",
     },
 ]
+
+# Mod audit: pilot-focused fleet mapping for fleet-mode recommendations.
+MOD_FLEET_ASSIGNMENTS = {
+    "HERASYNDULLAS3": "Rebel Fleet",
+    "CHOPPERS3": "Rebel Fleet",
+    "SABINEWRENS3": "Rebel Fleet",
+    "BOSSK": "Executor Core",
+    "BOBAFETT": "Executor Core",
+    "CADBANE": "Executor Core",
+    "DARTHVADER": "Empire Fleet",
+    "KYLORENUNMASKED": "Finalizer",
+    "KYLOREN": "Finalizer",
+    "FOSITHTROOPER": "Finalizer",
+    "FIRSTORDEROFFICERMALE": "Finalizer",
+}
+
+# Per-mode weighting to rank squads and fleets by stated player goal.
+MOD_AUDIT_MODE_WEIGHTS = {
+    "pve": {
+        "squads": {
+            "Phoenix": 1.2,
+            "Bounty Hunters": 1.1,
+            "Empire": 1.0,
+            "First Order": 1.0,
+            "Imperial Troopers": 1.0,
+        },
+        "fleets": {
+            "Executor Core": 1.15,
+            "Finalizer": 1.1,
+            "Rebel Fleet": 1.0,
+            "Empire Fleet": 1.0,
+        },
+    },
+    "gac_offense": {
+        "squads": {
+            "Imperial Troopers": 1.25,
+            "Bounty Hunters": 1.15,
+            "Empire": 1.1,
+            "Phoenix": 1.0,
+            "First Order": 1.05,
+        },
+        "fleets": {
+            "Executor Core": 1.2,
+            "Finalizer": 1.15,
+            "Empire Fleet": 1.05,
+            "Rebel Fleet": 1.0,
+        },
+    },
+    "gac_defense": {
+        "squads": {
+            "First Order": 1.2,
+            "Empire": 1.1,
+            "Phoenix": 1.05,
+            "Bounty Hunters": 1.0,
+            "Imperial Troopers": 0.95,
+        },
+        "fleets": {
+            "Finalizer": 1.2,
+            "Executor Core": 1.1,
+            "Empire Fleet": 1.05,
+            "Rebel Fleet": 1.0,
+        },
+    },
+    "raid": {
+        "squads": {
+            "Imperial Troopers": 1.15,
+            "Bounty Hunters": 1.1,
+            "Empire": 1.05,
+            "Phoenix": 1.0,
+            "First Order": 1.0,
+        },
+        "fleets": {
+            "Executor Core": 1.0,
+            "Finalizer": 1.0,
+            "Rebel Fleet": 1.0,
+            "Empire Fleet": 1.0,
+        },
+    },
+    "raid_order66": {
+        "squads": {
+            "Empire": 1.25,
+            "Imperial Troopers": 1.2,
+            "Bounty Hunters": 1.1,
+            "First Order": 1.0,
+            "Phoenix": 0.95,
+        },
+        "fleets": {
+            "Empire Fleet": 1.15,
+            "Executor Core": 1.1,
+            "Finalizer": 1.0,
+            "Rebel Fleet": 0.95,
+        },
+    },
+    "proving_grounds": {
+        "squads": {
+            "Empire": 1.2,
+            "Bounty Hunters": 1.15,
+            "First Order": 1.1,
+            "Imperial Troopers": 1.05,
+            "Phoenix": 1.0,
+        },
+        "fleets": {
+            "Executor Core": 1.1,
+            "Finalizer": 1.05,
+            "Empire Fleet": 1.0,
+            "Rebel Fleet": 1.0,
+        },
+    },
+}
+
+# Per-mode unit multipliers let event-defining units rise above broad squad weighting.
+MOD_AUDIT_MODE_UNIT_MULTIPLIERS = {
+    "raid_order66": {
+        "GRANDMOFFTARKIN": 2.0,
+    },
+}
+
+# Eligibility constraints for mode-specific audits.
+# Confidence values:
+# - known: explicit, verified ruleset is available
+# - estimated: inferred from current event/community patterns
+# - unknown: no reliable ruleset mapped yet; no hard filtering applied
+MOD_AUDIT_ELIGIBILITY_RULES = {
+    "pve": {
+        "confidence": "estimated",
+        "allowed_squads": [
+            "Phoenix",
+            "Bounty Hunters",
+            "Empire",
+            "First Order",
+            "Imperial Troopers",
+        ],
+        "allowed_fleets": [
+            "Executor Core",
+            "Finalizer",
+            "Rebel Fleet",
+            "Empire Fleet",
+        ],
+        "note": "PvE eligibility is broad and context-dependent; using best-estimate team pools.",
+    },
+    "gac_offense": {
+        "confidence": "estimated",
+        "allowed_squads": [
+            "Phoenix",
+            "Bounty Hunters",
+            "Empire",
+            "First Order",
+            "Imperial Troopers",
+        ],
+        "allowed_fleets": [
+            "Executor Core",
+            "Finalizer",
+            "Rebel Fleet",
+            "Empire Fleet",
+        ],
+        "note": "Using best-estimate offense pools from configured squads and fleets.",
+    },
+    "gac_defense": {
+        "confidence": "estimated",
+        "allowed_squads": [
+            "Phoenix",
+            "Bounty Hunters",
+            "Empire",
+            "First Order",
+            "Imperial Troopers",
+        ],
+        "allowed_fleets": [
+            "Executor Core",
+            "Finalizer",
+            "Rebel Fleet",
+            "Empire Fleet",
+        ],
+        "note": "Using best-estimate defense pools from configured squads and fleets.",
+    },
+    "raid": {
+        "confidence": "unknown",
+        "allowed_squads": [],
+        "allowed_fleets": [],
+        "note": "Generic raid mode does not map to one verified whitelist; using best estimates without hard exclusions.",
+    },
+    "raid_order66": {
+        "confidence": "estimated",
+        "allowed_squads": [
+            "Empire",
+            "Imperial Troopers",
+            "Bounty Hunters",
+            "First Order",
+        ],
+        "allowed_fleets": [],
+        "note": "Order 66 restrictions are currently estimated; fleet entries are treated as ineligible.",
+    },
+    "proving_grounds": {
+        "confidence": "estimated",
+        "allowed_squads": [
+            "Phoenix",
+            "Bounty Hunters",
+            "Empire",
+            "First Order",
+            "Imperial Troopers",
+        ],
+        "allowed_fleets": [],
+        "note": "Proving Grounds is treated as squad-only in best-effort eligibility.",
+    },
+}

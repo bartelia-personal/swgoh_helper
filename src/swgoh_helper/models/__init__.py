@@ -128,7 +128,15 @@ from .journey_guide import (
 )
 
 # Mod audit
-from .mods import ModAuditProfile, ModAuditFinding, ModAuditUnitResult, ModAuditReport
+from .mods import (
+    ModAuditEligibility,
+    ModAuditFocus,
+    ModAuditGoalMode,
+    ModAuditProfile,
+    ModAuditFinding,
+    ModAuditUnitResult,
+    ModAuditReport,
+)
 
 __all__ = [
     # Enums
@@ -237,6 +245,9 @@ __all__ = [
     # Mod audit
     "ModAuditProfile",
     "ModAuditFinding",
+    "ModAuditGoalMode",
+    "ModAuditFocus",
+    "ModAuditEligibility",
     "ModAuditUnitResult",
     "ModAuditReport",
 ]

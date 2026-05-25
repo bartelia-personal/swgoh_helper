@@ -513,13 +513,27 @@ class ModAuditApp:
         self.service = SwgohDataService(api_key, progress=self.progress)
         self.recommender = ModRecommender()
 
-    def analyze_player(self, ally_code: str, top_n: int = 10) -> str:
+    def analyze_player(
+        self,
+        ally_code: str,
+        top_n: int = 10,
+        goal_mode: str = "pve",
+        focus: str = "both",
+        eligibility: str = "best_effort",
+    ) -> str:
         """Audit a player's equipped mods and rank the biggest gaps."""
         try:
             self.progress.update(f"Fetching player data for ally code: {ally_code}...")
             player_data = self.service.get_player(ally_code)
-            self.progress.update("Auditing equipped mods for prioritized squads...")
-            report = self.recommender.analyze(player_data)
+            self.progress.update(
+                f"Auditing equipped mods (mode={goal_mode}, focus={focus}, eligibility={eligibility})..."
+            )
+            report = self.recommender.analyze(
+                player_data,
+                goal_mode=goal_mode,
+                focus=focus,
+                eligibility=eligibility,
+            )
             return self.recommender.format_report(report, top_n=top_n)
         except requests.exceptions.RequestException as e:
             raise AppExecutionError(f"Error fetching data: {e}") from e
@@ -604,7 +618,7 @@ def print_usage():
     print("  python app.py rote_farm 123-456-789 --max-phase 4")
     print("  python app.py journey-guide 123-456-789 --top 5")
     print('  python app.py journey-guide 123-456-789 --target "Jedi Master Kenobi"')
-    print("  python app.py mod-audit 123-456-789 --top 8")
+    print("  python app.py mod-audit 123-456-789 --top 8 --mode proving_grounds --focus both")
 
 
 def run_kyrotech():
@@ -944,7 +958,15 @@ def run_journey_guide():
 def run_mod_audit():
     """Entry point for mod-audit CLI command."""
     if len(sys.argv) < 2:
-        print("Usage: mod-audit <ally_code> [--top N]")
+        print("Usage: mod-audit <ally_code> [--top N] [--mode MODE] [--focus FOCUS] [--eligibility MODE]")
+        print("Modes: pve, gac_offense, gac_defense, raid, raid_order66, proving_grounds")
+        print("Focus: squads, fleets, both")
+        print("Eligibility: best_effort, off")
+        print("Examples:")
+        print("  mod-audit 123-456-789 --mode pve --focus both --top 10")
+        print("  mod-audit 123-456-789 --mode gac_offense --focus squads --top 12")
+        print("  mod-audit 123-456-789 --mode proving_grounds --focus squads --eligibility best_effort")
+        print("  mod-audit 123-456-789 --mode order66 --focus squads --eligibility best_effort")
         sys.exit(1)
 
     if not SWGOH_API_KEY:
@@ -954,6 +976,19 @@ def run_mod_audit():
 
     ally_code = sys.argv[1]
     top_n = 10
+    goal_mode = "pve"
+    focus = "both"
+    eligibility = "best_effort"
+    allowed_modes = {
+        "pve",
+        "gac_offense",
+        "gac_defense",
+        "raid",
+        "raid_order66",
+        "proving_grounds",
+    }
+    allowed_focus = {"squads", "fleets", "both"}
+    allowed_eligibility = {"best_effort", "off"}
     i = 2
 
     while i < len(sys.argv):
@@ -962,11 +997,45 @@ def run_mod_audit():
             top_n = int(sys.argv[i + 1])
             i += 2
             continue
+        if arg == "--mode" and i + 1 < len(sys.argv):
+            goal_mode = sys.argv[i + 1].lower()
+            if goal_mode == "order66":
+                goal_mode = "raid_order66"
+            i += 2
+            continue
+        if arg == "--focus" and i + 1 < len(sys.argv):
+            focus = sys.argv[i + 1].lower()
+            i += 2
+            continue
+        if arg == "--eligibility" and i + 1 < len(sys.argv):
+            eligibility = sys.argv[i + 1].lower()
+            i += 2
+            continue
         i += 1
+
+    if goal_mode not in allowed_modes:
+        print(
+            "Error: invalid --mode. Expected one of: pve, gac_offense, gac_defense, raid, raid_order66, proving_grounds"
+        )
+        sys.exit(1)
+
+    if focus not in allowed_focus:
+        print("Error: invalid --focus. Expected one of: squads, fleets, both")
+        sys.exit(1)
+
+    if eligibility not in allowed_eligibility:
+        print("Error: invalid --eligibility. Expected one of: best_effort, off")
+        sys.exit(1)
 
     app = ModAuditApp(SWGOH_API_KEY)
     try:
-        output = app.analyze_player(ally_code=ally_code, top_n=top_n)
+        output = app.analyze_player(
+            ally_code=ally_code,
+            top_n=top_n,
+            goal_mode=goal_mode,
+            focus=focus,
+            eligibility=eligibility,
+        )
         print(output)
     except AppExecutionError as e:
         print(str(e))

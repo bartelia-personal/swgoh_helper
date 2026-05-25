@@ -184,14 +184,68 @@ uv run mod-audit <ally_code>
 Options:
 ```powershell
 uv run mod-audit 123-456-789 --top 8
+uv run mod-audit 123-456-789 --mode gac_offense --focus squads
+uv run mod-audit 123-456-789 --mode proving_grounds --focus fleets
+uv run mod-audit 123-456-789 --mode raid_order66 --focus both
+uv run mod-audit 123-456-789 --mode raid_order66 --focus both --eligibility best_effort
+uv run mod-audit 123-456-789 --mode raid --focus both --eligibility off
 ```
 
-The current audit focuses on prioritized squads already covered by this repo's progression advice:
+Recommended command recipes:
+```powershell
+# Daily balanced check
+uv run mod-audit 123-456-789 --mode pve --focus both --top 10
+
+# GAC lock-in pass
+uv run mod-audit 123-456-789 --mode gac_offense --focus squads --top 12
+uv run mod-audit 123-456-789 --mode gac_defense --focus squads --top 12
+
+# Fleet cleanup pass
+uv run mod-audit 123-456-789 --mode gac_offense --focus fleets --top 10
+
+# Proving Grounds prep (squad-only event logic)
+uv run mod-audit 123-456-789 --mode proving_grounds --focus squads --eligibility best_effort --top 10
+
+# Order 66 raid prep
+uv run mod-audit 123-456-789 --mode order66 --focus squads --eligibility best_effort --top 10
+
+# Generic raid exploration when event rules are unclear
+uv run mod-audit 123-456-789 --mode raid --focus both --eligibility best_effort --top 10
+```
+
+Focus values:
+- `squads`
+- `fleets`
+- `both` (default)
+
+Eligibility values:
+- `best_effort` (default)
+- `off`
+
+Eligibility behavior:
+- `best_effort`: applies known or estimated event restrictions and reports confidence
+- `off`: disables eligibility filtering and only uses mod-gap scoring
+- If eligibility confidence is `unknown`, the report explicitly states best estimates are being used without hard exclusions
+
+Goal modes:
+- `pve` (default)
+- `gac_offense`
+- `gac_defense`
+- `raid`
+- `raid_order66` (alias: `order66`)
+- `proving_grounds`
+
+The audit is organized around prioritized squads and fleet pilot cores already covered by this repo's progression advice:
 - Phoenix / Captain Rex
 - Bounty Hunters
 - Empire
 - First Order
 - Imperial Troopers
+
+When `--eligibility best_effort` is enabled, the report includes:
+- an eligibility confidence (`known`, `estimated`, or `unknown`)
+- a note when the mode cannot be fully verified and best estimates are used
+- count of excluded units filtered as ineligible
 
 It reports:
 - missing equipped mods
