@@ -27,6 +27,7 @@ from .rote_presenter import RotePresenter
 from .rote_bonus_readiness import BonusReadinessAnalyzer
 from .journey_guide_advisor import JourneyGuideAdvisor
 from .mod_recommender import ModRecommender
+from .farm_focus_advisor import FarmFocusAdvisor
 from .exceptions import AppExecutionError
 
 dotenv.load_dotenv()
@@ -541,6 +542,40 @@ class ModAuditApp:
             raise AppExecutionError(f"Error: {e}") from e
 
 
+class FarmFocusApp:
+    """Application for target-focused campaign farming recommendations."""
+
+    def __init__(self, api_key: str, progress: Optional[ProgressNotifier] = None):
+        self.progress = progress or ProgressNotifier()
+        self.service = SwgohDataService(api_key, progress=self.progress)
+        self.advisor = FarmFocusAdvisor()
+
+    def recommend_for_target(
+        self,
+        ally_code: str,
+        target_query: str,
+        top_n: int = 8,
+    ) -> str:
+        try:
+            self.progress.update("Loading unit metadata...")
+            units_data = self.service.get_all_units()
+            self.progress.update(f"Fetching player data for ally code: {ally_code}...")
+            player_data = self.service.get_player(ally_code)
+            self.progress.update(f"Building farm advice for target: {target_query}...")
+            return self.advisor.recommend_for_target(
+                player=player_data,
+                units_data=units_data,
+                target_query=target_query,
+                top_n=top_n,
+            )
+        except ValueError as e:
+            raise AppExecutionError(f"Error: {e}") from e
+        except requests.exceptions.RequestException as e:
+            raise AppExecutionError(f"Error fetching data: {e}") from e
+        except Exception as e:
+            raise AppExecutionError(f"Error: {e}") from e
+
+
 def print_usage():
     """Print usage information."""
     print("Usage: python app.py <command> [arguments]")
@@ -604,6 +639,11 @@ def print_usage():
     )
     print("                            --owned-only: Deprioritize unowned units")
     print()
+    print("  farm_focus|farm-focus <ally_code> --target TARGET_NAME [--top N]")
+    print("                            Recommend campaign energy nodes for one target")
+    print("                            --target: Character or ship name to focus")
+    print("                            --top: Number of node suggestions to show (default: 8)")
+    print()
     print("Examples:")
     print("  python app.py kyrotech 123-456-789")
     print("  python app.py rote_platoon 123-456-789")
@@ -619,6 +659,7 @@ def print_usage():
     print("  python app.py journey-guide 123-456-789 --top 5")
     print('  python app.py journey-guide 123-456-789 --target "Jedi Master Kenobi"')
     print("  python app.py mod-audit 123-456-789 --top 8 --mode proving_grounds --focus both")
+    print('  python app.py farm-focus 123-456-789 --target "Grand Moff Tarkin" --top 8')
 
 
 def run_kyrotech():
@@ -1043,6 +1084,54 @@ def run_mod_audit():
         sys.exit(1)
 
 
+def run_farm_focus():
+    """Entry point for farm-focus CLI command."""
+    if len(sys.argv) < 2:
+        print("Usage: farm-focus <ally_code> --target TARGET_NAME [--top N]")
+        print('Example: farm-focus 123-456-789 --target "Grand Moff Tarkin" --top 8')
+        sys.exit(1)
+
+    if not SWGOH_API_KEY:
+        print("Error: SWGOH_API_KEY not found in environment variables")
+        print("Please create a .env file with your API key")
+        sys.exit(1)
+
+    ally_code = sys.argv[1]
+    target_query = None
+    top_n = 8
+    i = 2
+
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "--target" and i + 1 < len(sys.argv):
+            target_query = sys.argv[i + 1]
+            i += 2
+            continue
+        if arg == "--top" and i + 1 < len(sys.argv):
+            top_n = int(sys.argv[i + 1])
+            i += 2
+            continue
+        i += 1
+
+    if not target_query:
+        print("Error: --target is required for farm-focus")
+        print("Usage: farm-focus <ally_code> --target TARGET_NAME [--top N]")
+        sys.exit(1)
+
+    app = FarmFocusApp(SWGOH_API_KEY)
+    try:
+        output = app.recommend_for_target(
+            ally_code=ally_code,
+            target_query=target_query,
+            top_n=top_n,
+        )
+        print(output)
+    except AppExecutionError as e:
+        print(str(e))
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     """Main entry point for the application."""
     if len(sys.argv) < 2:
@@ -1065,6 +1154,8 @@ def main():
         "gl-path": run_journey_guide,
         "mod_audit": run_mod_audit,
         "mod-audit": run_mod_audit,
+        "farm_focus": run_farm_focus,
+        "farm-focus": run_farm_focus,
     }
 
     handler = handlers.get(command)

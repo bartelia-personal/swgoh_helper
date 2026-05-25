@@ -255,6 +255,27 @@ It reports:
 
 If the player API/cache returns sparse mod data, the report flags the result as a partial audit.
 
+### Target Farm Focus
+
+Build account-aware campaign spending advice for one character or ship target:
+
+```powershell
+uv run farm-focus <ally_code> --target "TARGET_NAME"
+```
+
+Options:
+```powershell
+uv run farm-focus 123-456-789 --target "Grand Moff Tarkin" --top 8
+uv run farm-focus 123-456-789 --target "Executor" --top 10
+```
+
+What it does:
+- resolves a target by name (character or ship)
+- ranks campaign nodes for shard/blueprint progress
+- boosts nodes that overlap with other unmaxed farms in your account
+- highlights Signal Data support when target relic progression still matters
+- includes a mod-farming note from mod-audit profile data and calls out when mod battle routing is estimated
+
 ## Discord Bot
 
 The project includes an optional Discord bot that exposes all commands as slash commands.

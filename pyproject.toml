@@ -22,6 +22,7 @@ rote-limited = "swgoh_helper.app:run_rote_limited"
 rote-farm = "swgoh_helper.app:run_rote_farm"
 journey-guide = "swgoh_helper.app:run_journey_guide"
 mod-audit = "swgoh_helper.app:run_mod_audit"
+farm-focus = "swgoh_helper.app:run_farm_focus"
 rote_bonus_readiness = "swgoh_helper.rote_bonus_readiness:run_rote_bonus_readiness"
 swgoh-discord = "swgoh_discord.bot:main"
 
