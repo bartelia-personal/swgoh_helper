@@ -23,6 +23,7 @@ class JourneyPathDefinition(BaseModel):
 
     unit_id: Optional[str] = None
     name: str
+    kind: str = "journey_character"
     requirements: list[JourneyRequirement] = Field(default_factory=list)
 
 

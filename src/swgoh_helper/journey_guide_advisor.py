@@ -65,11 +65,12 @@ class JourneyGuideAdvisor:
         target_gl: str | None = None,
         top_n: int = 3,
         include_unowned: bool = True,
+        target_kind: str | None = None,
     ) -> JourneyPathReport:
         """Analyze and rank Journey Guide paths for a player."""
         unit_index = self._build_unit_index(units_data.data)
         player_units = {u.data.base_id: u.data for u in player.units}
-        candidate_paths = self._filter_paths(target_gl)
+        candidate_paths = self._filter_paths(target_gl, target_kind)
         scores = [
             self._score_path(path, unit_index, player_units, include_unowned)
             for path in candidate_paths
@@ -291,12 +292,21 @@ class JourneyGuideAdvisor:
             return False
         return unit.base_id in player_units
 
-    def _filter_paths(self, target_gl: str | None) -> list[JourneyPathDefinition]:
+    def _filter_paths(
+        self,
+        target_gl: str | None,
+        target_kind: str | None = None,
+    ) -> list[JourneyPathDefinition]:
+        filtered = self.paths
+        if target_kind:
+            kind = target_kind.lower()
+            filtered = [p for p in filtered if p.kind.lower() == kind]
+
         if not target_gl:
-            return self.paths
+            return filtered
+
         normalized = _normalize_name(target_gl)
-        matched = [p for p in self.paths if normalized in _normalize_name(p.name)]
-        return matched
+        return [p for p in filtered if normalized in _normalize_name(p.name)]
 
     def _resolve_unit(self, unit_name: str, unit_index: dict[str, Unit]) -> Unit | None:
         key = _normalize_name(unit_name)
@@ -327,6 +337,7 @@ class JourneyGuideAdvisor:
                 JourneyPathDefinition(
                     unit_id=target.id,
                     name=target.name,
+                    kind=target.kind,
                     requirements=requirements,
                 )
             )

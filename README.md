@@ -173,6 +173,25 @@ Notes:
 - Journey Guide requirements are loaded from `data/journey_guide_requirements.json`.
 - Update that file any time requirements change in-game.
 
+### Galactic Legend Path Advisor
+
+Run a Galactic Legend-only filter on Journey Guide path recommendations:
+
+```powershell
+uv run gl-path <ally_code>
+```
+
+Options:
+```powershell
+uv run gl-path 123-456-789 --top 5
+uv run gl-path 123-456-789 --target "Jedi Master Kenobi"
+uv run gl-path 123-456-789 --owned-only
+```
+
+Notes:
+- `gl-path` uses the same Journey Guide engine and data file (`data/journey_guide_requirements.json`).
+- It applies a `kind = galactic_legend` filter before ranking paths.
+
 ## Discord Bot
 
 The project includes an optional Discord bot that exposes all commands as slash commands.

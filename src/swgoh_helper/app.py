@@ -476,6 +476,7 @@ class JourneyGuidePathApp:
         target_gl: Optional[str] = None,
         top_n: int = 3,
         include_unowned: bool = True,
+        target_kind: Optional[str] = None,
     ) -> str:
         """Rank Journey Guide paths for a player and return a formatted report."""
         try:
@@ -490,6 +491,7 @@ class JourneyGuidePathApp:
                 target_gl=target_gl,
                 top_n=top_n,
                 include_unowned=include_unowned,
+                target_kind=target_kind,
             )
             return self.advisor.format_report(report)
         except ValueError as e:
@@ -556,7 +558,7 @@ def print_usage():
     print("                            --include-unowned: Include units you don't own")
     print()
     print(
-        "  journey_guide|journey-guide|gl_path|gl-path <ally_code> [--target TARGET_NAME] [--top N] [--owned-only]"
+        "  journey_guide|journey-guide <ally_code> [--target TARGET_NAME] [--top N] [--owned-only]"
     )
     print("                            Rank Journey Guide unlock paths for one player")
     print(
@@ -565,6 +567,12 @@ def print_usage():
     print(
         "                            --top: Number of ranked paths to show (default: 3)"
     )
+    print("                            --owned-only: Deprioritize unowned units")
+    print()
+    print("  gl_path|gl-path <ally_code> [--target TARGET_NAME] [--top N] [--owned-only]")
+    print("                            Rank Galactic Legend paths from Journey Guide data")
+    print("                            --target: Limit analysis to one GL by name match")
+    print("                            --top: Number of ranked paths to show (default: 3)")
     print("                            --owned-only: Deprioritize unowned units")
     print()
     print("Examples:")
@@ -581,6 +589,8 @@ def print_usage():
     print("  python app.py rote_farm 123-456-789 --max-phase 4")
     print("  python app.py journey-guide 123-456-789 --top 5")
     print('  python app.py journey-guide 123-456-789 --target "Jedi Master Kenobi"')
+    print("  python app.py gl-path 123-456-789 --top 5")
+    print('  python app.py gl-path 123-456-789 --target "Jedi Master Kenobi"')
 
 
 def run_kyrotech():
@@ -869,8 +879,8 @@ def run_rote_farm():
         sys.exit(1)
 
 
-def run_journey_guide():
-    """Entry point for journey-guide and gl-path CLI commands."""
+def run_journey_guide(target_kind: Optional[str] = None):
+    """Entry point for journey-guide and filtered path commands."""
     if len(sys.argv) < 2:
         print(
             "Usage: journey-guide <ally_code> [--target TARGET_NAME] [--top N] [--owned-only]"
@@ -909,12 +919,18 @@ def run_journey_guide():
             target_gl=target_gl,
             top_n=top_n,
             include_unowned=include_unowned,
+            target_kind=target_kind,
         )
         print(output)
     except AppExecutionError as e:
         print(str(e))
         traceback.print_exc()
         sys.exit(1)
+
+
+def run_gl_path():
+    """Entry point for gl-path CLI command."""
+    run_journey_guide(target_kind="galactic_legend")
 
 
 def main():
@@ -935,8 +951,8 @@ def main():
         "rote-farm": run_rote_farm,
         "journey_guide": run_journey_guide,
         "journey-guide": run_journey_guide,
-        "gl_path": run_journey_guide,
-        "gl-path": run_journey_guide,
+        "gl_path": run_gl_path,
+        "gl-path": run_gl_path,
     }
 
     handler = handlers.get(command)

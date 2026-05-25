@@ -54,6 +54,20 @@ def _entry(unit_id: str, unit_name: str, requirements: list[dict]) -> dict:
     }
 
 
+def _entry_with_kind(
+    unit_id: str,
+    unit_name: str,
+    requirements: list[dict],
+    kind: str,
+) -> dict:
+    return {
+        "id": unit_id,
+        "name": unit_name,
+        "kind": kind,
+        "requirement": {"type": "all", "items": requirements},
+    }
+
+
 def _req(unit_id: str, min_relic: int | None = None, min_stars: int = 7) -> dict:
     min_spec: dict = {"stars": min_stars}
     if min_relic is not None:
@@ -240,3 +254,47 @@ def test_higher_relic_targets_cost_more_than_lower_targets(tmp_path):
     assert report.ranked_paths[0].total_distance == pytest.approx(10.9875)
     assert report.ranked_paths[1].gl_name == "R7 GL"
     assert report.ranked_paths[1].total_distance == pytest.approx(16.54)
+
+
+def test_analyze_filters_by_target_kind(tmp_path):
+    data = _journey_guide(
+        [
+            _entry_with_kind(
+                "GLTEST",
+                "Test GL",
+                [_req("UNITGL", min_relic=5)],
+                "galactic_legend",
+            ),
+            _entry_with_kind(
+                "JGTEST",
+                "Test Journey",
+                [_req("UNITJG", min_relic=5)],
+                "journey_character",
+            ),
+        ]
+    )
+    requirements_path = tmp_path / "journey_guide_requirements.json"
+    requirements_path.write_text(json.dumps(data), encoding="utf-8")
+
+    advisor = JourneyGuideAdvisor(requirements_path=requirements_path)
+    units_data = _fake_units_response(
+        [("GL Unit", "UNITGL"), ("Journey Unit", "UNITJG")]
+    )
+    player = _fake_player(
+        "Test Player",
+        123456789,
+        [
+            _fake_player_unit("UNITGL", relic=4, gear=13, stars=7),
+            _fake_player_unit("UNITJG", relic=4, gear=13, stars=7),
+        ],
+    )
+
+    report = advisor.analyze(
+        player,
+        units_data,
+        target_kind="galactic_legend",
+        top_n=5,
+    )
+
+    assert len(report.ranked_paths) == 1
+    assert report.ranked_paths[0].gl_name == "Test GL"
