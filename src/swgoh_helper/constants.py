@@ -224,14 +224,14 @@ MOD_AUDIT_PROFILES = {
         "priority_stats": ["Offense", "Speed", "Critical Chance", "Protection"],
         "speed_floor": 210,
     },
-    "SITHTROOPER": {
+    "FOSITHTROOPER": {
         "squad": "First Order",
         "target_sets": ["Offense", "Critical Chance"],
         "recommended_primaries": {3: "Speed", 5: "Protection", 6: "Critical Damage", 7: "Offense"},
         "priority_stats": ["Offense", "Critical Chance", "Speed", "Protection"],
         "speed_floor": 200,
     },
-    "FIRSTORDEROFFICERMAUL": {
+    "FIRSTORDEROFFICERMALE": {
         "squad": "First Order",
         "target_sets": ["Speed", "Health"],
         "recommended_primaries": {3: "Speed", 5: "Protection", 6: "Protection", 7: "Potency"},
