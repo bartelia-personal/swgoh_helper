@@ -173,6 +173,8 @@ def test_format_report_shows_mode_and_group_summaries():
     assert "Focus: both" in output
     assert "Top squads by need" in output
     assert "Top fleets by need" in output
+    assert "Action plan (Do 1-N)" in output
+    assert "Do 1:" in output
 
 
 def test_analyze_supports_order66_raid_mode():

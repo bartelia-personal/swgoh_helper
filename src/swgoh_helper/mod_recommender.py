@@ -1,6 +1,7 @@
 """Audit equipped mods for a prioritized set of squads."""
 
 from collections import Counter, defaultdict
+import re
 
 from .constants import (
     MOD_ASSIGNMENT_PRIORITY,
@@ -110,6 +111,7 @@ class ModRecommender:
             return "\n".join(lines)
         lines.extend(self._mode_anchor_lines(report))
         lines.extend(self._group_summary_lines(report.audited_units, report.focus))
+        lines.extend(self._action_plan_lines(report.audited_units))
         lines.extend(self._assignment_lines(report.audited_units, report.focus))
         lines.append("Top upgrade targets")
         for index, result in enumerate(report.audited_units[:top_n], 1):
@@ -203,6 +205,59 @@ class ModRecommender:
             if fleet_units:
                 lines.extend(self._summary_by_group(fleet_units, "fleet", "Top fleets by need"))
         return lines
+
+    def _action_plan_lines(self, audited_units: list[ModAuditUnitResult]) -> list[str]:
+        if not audited_units:
+            return []
+        actions: list[str] = []
+        seen: set[str] = set()
+        for result in audited_units:
+            for finding in result.findings:
+                action = self._action_from_finding(result, finding.message)
+                if action is None or action in seen:
+                    continue
+                seen.add(action)
+                actions.append(action)
+                if len(actions) == 6:
+                    break
+            if len(actions) == 6:
+                break
+        if not actions:
+            return []
+        lines = ["Action plan (Do 1-N)"]
+        for index, action in enumerate(actions, 1):
+            lines.append(f"Do {index}: {action}")
+        lines.append("")
+        return lines
+
+    def _action_from_finding(
+        self,
+        result: ModAuditUnitResult,
+        message: str,
+    ) -> str | None:
+        unit = result.unit_name
+        speed_match = re.match(r"Speed\s+(\d+)\s+is below the\s+(\d+)\s+target\.", message)
+        if speed_match:
+            return f"Raise {unit} speed from {speed_match.group(1)} to at least {speed_match.group(2)}."
+        missing_mods_match = re.match(r"Missing\s+(\d+)\s+equipped mods\.", message)
+        if missing_mods_match:
+            return f"Equip {missing_mods_match.group(1)} missing mods on {unit} (currently {result.equipped_mod_count}/6)."
+        missing_set_match = re.match(r"Missing recommended\s+(.+)\s+set\.", message)
+        if missing_set_match:
+            return f"Complete a {missing_set_match.group(1)} set on {unit}."
+        wrong_primary_match = re.match(
+            r"(.+) has (.+) primary; target is (.+)\.",
+            message,
+        )
+        if wrong_primary_match:
+            return (
+                f"Swap {wrong_primary_match.group(1)} primary on {unit} "
+                f"from {wrong_primary_match.group(2)} to {wrong_primary_match.group(3)}."
+            )
+        missing_primary_match = re.match(r"(.+) is missing; target primary is (.+)\.", message)
+        if missing_primary_match:
+            return f"Equip {missing_primary_match.group(1)} on {unit} with {missing_primary_match.group(2)} primary."
+        return None
 
     def _summary_by_group(
         self,
