@@ -4,6 +4,7 @@ from collections import defaultdict
 import re
 
 from .mod_recommender import ModRecommender
+from .constants import MOD_AUDIT_MODE_WEIGHTS
 
 SUPPORTED_SQUAD_MODES = (
     "pve",
@@ -34,9 +35,7 @@ class SquadPlanAdvisor:
             return "No squad data available."
 
         aggregate = self._aggregate_scores(reports)
-        ranked_squads = sorted(
-            aggregate["squad_scores"].items(), key=lambda item: -item[1]
-        )[:top_squads]
+        ranked_squads = self._rank_squads(aggregate, top_squads)
 
         lines = [
             f"Squad Plan for {player.data.name}",
@@ -75,30 +74,89 @@ class SquadPlanAdvisor:
                 unit_names[unit.base_id] = unit.unit_name
                 unit_squads[unit.base_id] = unit.squad
                 findings[unit.base_id].extend([f.message for f in unit.findings])
+        unit_completion = {
+            base_id: self._completion_from_findings(messages)
+            for base_id, messages in findings.items()
+        }
         return {
             "squad_scores": squad_scores,
             "unit_scores": unit_scores,
             "unit_names": unit_names,
             "unit_squads": unit_squads,
             "findings": findings,
+            "unit_completion": unit_completion,
         }
 
-    def _squad_membership_lines(self, ranked_squads: list, aggregate: dict) -> list[str]:
+    def _rank_squads(self, aggregate: dict, top_squads: int) -> list[dict]:
+        members = self._owned_members_by_squad(aggregate)
+        rankings: list[dict] = []
+        for squad, members_with_score in members.items():
+            ordered = sorted(
+                members_with_score,
+                key=lambda item: (
+                    -aggregate["unit_completion"].get(item[0], 0),
+                    -item[1],
+                ),
+            )
+            primary_ids = [base_id for base_id, _ in ordered[:MAX_SQUAD_SIZE]]
+            owned_count = len(ordered)
+            if not primary_ids:
+                continue
+            average_completion = sum(
+                aggregate["unit_completion"].get(base_id, 0)
+                for base_id in primary_ids
+            ) / len(primary_ids)
+            ownership_factor = min(1.0, owned_count / MAX_SQUAD_SIZE)
+            completion = round(average_completion * ownership_factor, 1)
+            potential = self._squad_potential(squad)
+            rank_score = round(completion * potential, 1)
+            rankings.append(
+                {
+                    "squad": squad,
+                    "rank_score": rank_score,
+                    "completion": completion,
+                    "potential": potential,
+                    "owned_count": owned_count,
+                }
+            )
+        rankings.sort(key=lambda item: (-item["rank_score"], -item["completion"], item["squad"]))
+        return rankings[:top_squads]
+
+    def _squad_membership_lines(self, ranked_squads: list[dict], aggregate: dict) -> list[str]:
         lines: list[str] = []
         profile_counts = self._profile_counts_by_squad()
         members = self._owned_members_by_squad(aggregate)
-        for index, (squad, score) in enumerate(ranked_squads, 1):
+        for index, ranking in enumerate(ranked_squads, 1):
+            squad = ranking["squad"]
             squad_members = members.get(squad, [])
-            primary_members = squad_members[:MAX_SQUAD_SIZE]
-            alternates = squad_members[MAX_SQUAD_SIZE:]
-            primary_text = ", ".join(primary_members) if primary_members else "none"
-            owned = len(squad_members)
+            ordered = sorted(
+                squad_members,
+                key=lambda item: (
+                    -aggregate["unit_completion"].get(item[0], 0),
+                    -item[1],
+                ),
+            )
+            primary = ordered[:MAX_SQUAD_SIZE]
+            alternates = ordered[MAX_SQUAD_SIZE:]
+            primary_text = ", ".join(
+                aggregate["unit_names"].get(base_id, base_id)
+                for base_id, _ in primary
+            )
+            if not primary_text:
+                primary_text = "none"
+            owned = ranking["owned_count"]
             total = profile_counts.get(squad, owned)
-            lines.append(f"{index}. {squad} (priority {score})")
+            lines.append(f"{index}. {squad} (rank {ranking['rank_score']})")
             lines.append(f"   Primary 5: {primary_text}")
             if alternates:
-                lines.append(f"   Alternates: {', '.join(alternates)}")
+                alt_text = ", ".join(
+                    aggregate["unit_names"].get(base_id, base_id)
+                    for base_id, _ in alternates
+                )
+                lines.append(f"   Alternates: {alt_text}")
             lines.append(f"   Owned profiled members: {owned}/{total}")
+            lines.append(f"   Completion: {ranking['completion']}%")
+            lines.append(f"   Potential: {ranking['potential']}")
         lines.append("")
         return lines
 
@@ -108,25 +166,21 @@ class SquadPlanAdvisor:
             counts[profile.squad] += 1
         return dict(counts)
 
-    def _owned_members_by_squad(self, aggregate: dict) -> dict[str, list[str]]:
+    def _owned_members_by_squad(self, aggregate: dict) -> dict[str, list[tuple[str, int]]]:
         by_squad: defaultdict[str, list[tuple[str, int]]] = defaultdict(list)
-        for base_id, name in aggregate["unit_names"].items():
+        for base_id in aggregate["unit_names"]:
             squad = aggregate["unit_squads"][base_id]
             score = aggregate["unit_scores"][base_id]
-            by_squad[squad].append((name, score))
-        output: dict[str, list[str]] = {}
-        for squad, members in by_squad.items():
-            ordered = sorted(members, key=lambda item: (-item[1], item[0]))
-            output[squad] = [name for name, _ in ordered]
-        return output
+            by_squad[squad].append((base_id, score))
+        return dict(by_squad)
 
     def _action_plan_lines(
         self,
-        ranked_squads: list,
+        ranked_squads: list[dict],
         aggregate: dict,
         plan_steps: int,
     ) -> list[str]:
-        top_squads = {name for name, _ in ranked_squads}
+        top_squads = {entry["squad"] for entry in ranked_squads}
         candidates = self._ranked_unit_ids_for_top_squads(top_squads, aggregate)
         actions: list[str] = []
         seen: set[str] = set()
@@ -172,3 +226,40 @@ class SquadPlanAdvisor:
         if missing_primary:
             return f"Equip {missing_primary.group(1)} on {unit_name} with {missing_primary.group(2)} primary."
         return None
+
+    def _completion_from_findings(self, findings: list[str]) -> float:
+        gap_score = 0
+        for message in set(findings):
+            missing_mods = re.match(r"Missing\s+(\d+)\s+equipped mods\.", message)
+            if missing_mods:
+                gap_score += int(missing_mods.group(1)) * 12
+                continue
+            missing_set = re.match(r"Missing recommended\s+(.+)\s+set\.", message)
+            if missing_set:
+                gap_score += 8
+                continue
+            wrong_primary = re.match(r"(.+) has (.+) primary; target is (.+)\.", message)
+            if wrong_primary:
+                gap_score += 6
+                continue
+            missing_primary = re.match(r"(.+) is missing; target primary is (.+)\.", message)
+            if missing_primary:
+                gap_score += 6
+                continue
+            speed = re.match(r"Speed\s+(\d+)\s+is below the\s+(\d+)\s+target\.", message)
+            if speed:
+                current = int(speed.group(1))
+                target = int(speed.group(2))
+                shortfall = max(0, target - current)
+                gap_score += min(25, max(8, shortfall // 4))
+        return max(0.0, round(100 - min(100, gap_score), 1))
+
+    def _squad_potential(self, squad: str) -> float:
+        potential = 0.0
+        for mode in SUPPORTED_SQUAD_MODES:
+            mode_config = MOD_AUDIT_MODE_WEIGHTS.get(mode, {})
+            potential += mode_config.get("squads", {}).get(squad, 0.0)
+        # Fallback keeps custom or ad-hoc squads rankable in tests and local profiles.
+        if potential == 0.0:
+            return 1.0
+        return round(potential, 2)
