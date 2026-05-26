@@ -13,6 +13,7 @@ SUPPORTED_SQUAD_MODES = (
     "raid_order66",
     "proving_grounds",
 )
+MAX_SQUAD_SIZE = 5
 
 
 class SquadPlanAdvisor:
@@ -88,11 +89,15 @@ class SquadPlanAdvisor:
         members = self._owned_members_by_squad(aggregate)
         for index, (squad, score) in enumerate(ranked_squads, 1):
             squad_members = members.get(squad, [])
-            member_text = ", ".join(squad_members) if squad_members else "none"
+            primary_members = squad_members[:MAX_SQUAD_SIZE]
+            alternates = squad_members[MAX_SQUAD_SIZE:]
+            primary_text = ", ".join(primary_members) if primary_members else "none"
             owned = len(squad_members)
             total = profile_counts.get(squad, owned)
             lines.append(f"{index}. {squad} (priority {score})")
-            lines.append(f"   Membership: {member_text}")
+            lines.append(f"   Primary 5: {primary_text}")
+            if alternates:
+                lines.append(f"   Alternates: {', '.join(alternates)}")
             lines.append(f"   Owned profiled members: {owned}/{total}")
         lines.append("")
         return lines
