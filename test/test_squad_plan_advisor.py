@@ -105,4 +105,4 @@ def test_recommend_for_account_includes_memberships_and_actions():
     assert "Alternates:" in output
     assert "Unit G" in output
     assert "Account improvement plan (Do 1-N)" in output
-    assert "Do 1:" in output
+    assert "Do 1: [Alpha]" in output

@@ -180,17 +180,14 @@ class SquadPlanAdvisor:
         aggregate: dict,
         plan_steps: int,
     ) -> list[str]:
-        top_squads = {entry["squad"] for entry in ranked_squads}
-        candidates = self._ranked_unit_ids_for_top_squads(top_squads, aggregate)
         actions: list[str] = []
         seen: set[str] = set()
-        for base_id in candidates:
-            unit_name = aggregate["unit_names"][base_id]
-            for message in aggregate["findings"][base_id]:
-                action = self._finding_to_action(unit_name, message)
-                if action and action not in seen:
-                    seen.add(action)
-                    actions.append(action)
+        for ranking in ranked_squads:
+            squad = ranking["squad"]
+            squad_actions = self._squad_action_lines(squad, aggregate, seen)
+            for action in squad_actions:
+                actions.append(action)
+                if len(actions) >= plan_steps:
                     break
             if len(actions) >= plan_steps:
                 break
@@ -201,11 +198,29 @@ class SquadPlanAdvisor:
             lines.append("Do 1: Continue improving speed and complete missing sets on core squads.")
         return lines
 
-    def _ranked_unit_ids_for_top_squads(self, top_squads: set[str], aggregate: dict) -> list[str]:
+    def _squad_action_lines(
+        self,
+        squad: str,
+        aggregate: dict,
+        seen: set[str],
+    ) -> list[str]:
+        lines: list[str] = []
+        candidates = self._ranked_unit_ids_for_squad(squad, aggregate)
+        for base_id in candidates:
+            unit_name = aggregate["unit_names"][base_id]
+            for message in aggregate["findings"][base_id]:
+                action = self._finding_to_action(unit_name, message)
+                if action and action not in seen:
+                    seen.add(action)
+                    lines.append(f"[{squad}] {action}")
+                    break
+        return lines
+
+    def _ranked_unit_ids_for_squad(self, squad: str, aggregate: dict) -> list[str]:
         ranked = [
             (base_id, score)
             for base_id, score in aggregate["unit_scores"].items()
-            if aggregate["unit_squads"].get(base_id) in top_squads
+            if aggregate["unit_squads"].get(base_id) == squad
         ]
         return [base_id for base_id, _ in sorted(ranked, key=lambda item: -item[1])]
 
