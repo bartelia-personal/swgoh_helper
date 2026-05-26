@@ -28,6 +28,7 @@ from .rote_bonus_readiness import BonusReadinessAnalyzer
 from .journey_guide_advisor import JourneyGuideAdvisor
 from .mod_recommender import ModRecommender
 from .farm_focus_advisor import FarmFocusAdvisor
+from .squad_plan_advisor import SquadPlanAdvisor
 from .exceptions import AppExecutionError
 
 dotenv.load_dotenv()
@@ -576,6 +577,39 @@ class FarmFocusApp:
             raise AppExecutionError(f"Error: {e}") from e
 
 
+class SquadPlanApp:
+    """Application for account-wide squad recommendations with memberships."""
+
+    def __init__(self, api_key: str, progress: Optional[ProgressNotifier] = None):
+        self.progress = progress or ProgressNotifier()
+        self.service = SwgohDataService(api_key, progress=self.progress)
+        self.advisor = SquadPlanAdvisor()
+
+    def recommend_for_account(
+        self,
+        ally_code: str,
+        top_squads: int = 5,
+        plan_steps: int = 10,
+        eligibility: str = "best_effort",
+    ) -> str:
+        try:
+            self.progress.update(f"Fetching player data for ally code: {ally_code}...")
+            player_data = self.service.get_player(ally_code)
+            self.progress.update(
+                f"Building squad plan (top_squads={top_squads}, steps={plan_steps}, eligibility={eligibility})..."
+            )
+            return self.advisor.recommend_for_account(
+                player=player_data,
+                top_squads=top_squads,
+                plan_steps=plan_steps,
+                eligibility=eligibility,
+            )
+        except requests.exceptions.RequestException as e:
+            raise AppExecutionError(f"Error fetching data: {e}") from e
+        except Exception as e:
+            raise AppExecutionError(f"Error: {e}") from e
+
+
 def print_usage():
     """Print usage information."""
     print("Usage: python app.py <command> [arguments]")
@@ -644,6 +678,12 @@ def print_usage():
     print("                            --target: Character or ship name to focus")
     print("                            --top: Number of node suggestions to show (default: 8)")
     print()
+    print("  squad_plan|squad-plan <ally_code> [--top-squads N] [--steps N] [--eligibility MODE]")
+    print("                            Recommend account-wide squads with exact owned memberships")
+    print("                            --top-squads: Number of squads to rank (default: 5)")
+    print("                            --steps: Number of Do 1-N plan actions (default: 10)")
+    print("                            --eligibility: best_effort|off (default: best_effort)")
+    print()
     print("Examples:")
     print("  python app.py kyrotech 123-456-789")
     print("  python app.py rote_platoon 123-456-789")
@@ -660,6 +700,7 @@ def print_usage():
     print('  python app.py journey-guide 123-456-789 --target "Jedi Master Kenobi"')
     print("  python app.py mod-audit 123-456-789 --top 8 --mode proving_grounds --focus both")
     print('  python app.py farm-focus 123-456-789 --target "Grand Moff Tarkin" --top 8')
+    print("  python app.py squad-plan 123-456-789 --top-squads 5 --steps 10")
 
 
 def run_kyrotech():
@@ -1132,6 +1173,69 @@ def run_farm_focus():
         sys.exit(1)
 
 
+def _parse_squad_plan_args() -> tuple[int, int, str]:
+    top_squads = 5
+    plan_steps = 10
+    eligibility = "best_effort"
+    allowed_eligibility = {"best_effort", "off"}
+    i = 2
+
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "--top-squads" and i + 1 < len(sys.argv):
+            top_squads = int(sys.argv[i + 1])
+            i += 2
+            continue
+        if arg == "--steps" and i + 1 < len(sys.argv):
+            plan_steps = int(sys.argv[i + 1])
+            i += 2
+            continue
+        if arg == "--eligibility" and i + 1 < len(sys.argv):
+            eligibility = sys.argv[i + 1].lower()
+            i += 2
+            continue
+        i += 1
+
+    if eligibility not in allowed_eligibility:
+        raise ValueError("invalid --eligibility. Expected one of: best_effort, off")
+    return top_squads, plan_steps, eligibility
+
+
+def run_squad_plan():
+    """Entry point for squad-plan CLI command."""
+    if len(sys.argv) < 2:
+        print("Usage: squad-plan <ally_code> [--top-squads N] [--steps N] [--eligibility MODE]")
+        print("Eligibility: best_effort, off")
+        print("Example: squad-plan 123-456-789 --top-squads 5 --steps 10")
+        sys.exit(1)
+
+    if not SWGOH_API_KEY:
+        print("Error: SWGOH_API_KEY not found in environment variables")
+        print("Please create a .env file with your API key")
+        sys.exit(1)
+
+    ally_code = sys.argv[1]
+    try:
+        top_squads, plan_steps, eligibility = _parse_squad_plan_args()
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    app = SquadPlanApp(SWGOH_API_KEY)
+    try:
+        output = app.recommend_for_account(
+            ally_code=ally_code,
+            top_squads=top_squads,
+            plan_steps=plan_steps,
+            eligibility=eligibility,
+        )
+        print(output)
+    except AppExecutionError as e:
+        print(str(e))
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     """Main entry point for the application."""
     if len(sys.argv) < 2:
@@ -1156,6 +1260,8 @@ def main():
         "mod-audit": run_mod_audit,
         "farm_focus": run_farm_focus,
         "farm-focus": run_farm_focus,
+        "squad_plan": run_squad_plan,
+        "squad-plan": run_squad_plan,
     }
 
     handler = handlers.get(command)

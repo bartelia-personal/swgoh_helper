@@ -255,6 +255,27 @@ It reports:
 
 If the player API/cache returns sparse mod data, the report flags the result as a partial audit.
 
+### Squad Plan
+
+Build account-wide squad recommendations with exact owned memberships and a numbered improvement plan:
+
+```powershell
+uv run squad-plan <ally_code>
+```
+
+Options:
+```powershell
+uv run squad-plan 123-456-789 --top-squads 5
+uv run squad-plan 123-456-789 --steps 12
+uv run squad-plan 123-456-789 --eligibility off
+```
+
+What it does:
+- analyzes squad priorities across `pve`, `gac_offense`, `gac_defense`, `raid`, `raid_order66`, and `proving_grounds`
+- outputs ranked squads with exact member lists from your owned roster
+- shows owned profile coverage per squad (for example `4/5` members owned)
+- generates an account-wide `Do 1-N` improvement plan from top mod gaps
+
 ### Target Farm Focus
 
 Build account-aware campaign spending advice for one character or ship target:
