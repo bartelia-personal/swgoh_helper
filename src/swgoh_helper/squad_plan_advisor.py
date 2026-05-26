@@ -138,7 +138,7 @@ class SquadPlanAdvisor:
             )
             primary = ordered[:MAX_SQUAD_SIZE]
             alternates = ordered[MAX_SQUAD_SIZE:]
-            primary_text = ", ".join(
+            primary_text = "; ".join(
                 aggregate["unit_names"].get(base_id, base_id)
                 for base_id, _ in primary
             )
@@ -149,7 +149,7 @@ class SquadPlanAdvisor:
             lines.append(f"{index}. {squad} (rank {ranking['rank_score']})")
             lines.append(f"   Primary 5: {primary_text}")
             if alternates:
-                alt_text = ", ".join(
+                alt_text = "; ".join(
                     aggregate["unit_names"].get(base_id, base_id)
                     for base_id, _ in alternates
                 )
