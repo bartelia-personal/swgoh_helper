@@ -106,3 +106,6 @@ def test_recommend_for_account_includes_memberships_and_actions():
     assert "Unit G" in output
     assert "Account improvement plan (Do 1-N)" in output
     assert "Do 1: [Alpha]" in output
+    assert "How to do the improvements" in output
+    assert "Alpha:" in output
+    assert "Unit A: Missing 2 equipped mods." in output

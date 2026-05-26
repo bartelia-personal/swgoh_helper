@@ -46,6 +46,7 @@ class SquadPlanAdvisor:
         ]
         lines.extend(self._squad_membership_lines(ranked_squads, aggregate))
         lines.extend(self._action_plan_lines(ranked_squads, aggregate, plan_steps))
+        lines.extend(self._how_to_improve_lines(ranked_squads, aggregate))
         return "\n".join(lines)
 
     def _build_mode_reports(self, player, eligibility: str) -> list:
@@ -197,6 +198,36 @@ class SquadPlanAdvisor:
         if not actions:
             lines.append("Do 1: Continue improving speed and complete missing sets on core squads.")
         return lines
+
+    def _how_to_improve_lines(self, ranked_squads: list[dict], aggregate: dict) -> list[str]:
+        lines = ["How to do the improvements"]
+        for ranking in ranked_squads:
+            squad = ranking["squad"]
+            squad_lines = self._squad_weakness_lines(squad, aggregate)
+            if not squad_lines:
+                continue
+            lines.append(f"{squad}:")
+            for item in squad_lines:
+                lines.append(f"- {item}")
+        if len(lines) == 1:
+            lines.append("- No specific weak mod patterns found.")
+        return lines
+
+    def _squad_weakness_lines(self, squad: str, aggregate: dict) -> list[str]:
+        candidates = self._ranked_unit_ids_for_squad(squad, aggregate)
+        weak_points: list[str] = []
+        seen: set[str] = set()
+        for base_id in candidates:
+            unit_name = aggregate["unit_names"][base_id]
+            for message in aggregate["findings"][base_id]:
+                action = self._finding_to_action(unit_name, message)
+                if action is None or action in seen:
+                    continue
+                seen.add(action)
+                weak_points.append(f"{unit_name}: {message}")
+                if len(weak_points) == 3:
+                    return weak_points
+        return weak_points
 
     def _squad_action_lines(
         self,
