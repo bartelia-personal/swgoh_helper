@@ -182,7 +182,7 @@ MOD_AUDIT_PROFILES = {
         "priority_stats": ["Speed", "Potency", "Protection", "Health"],
         "speed_floor": 240,
     },
-    "DARTHVADER": {
+    "VADER": {
         "squad": "Empire",
         "target_sets": ["Offense", "Critical Chance"],
         "recommended_primaries": {3: "Speed", 5: "Protection", 6: "Critical Damage", 7: "Potency"},
