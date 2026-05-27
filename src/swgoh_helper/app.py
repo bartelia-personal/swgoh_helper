@@ -591,18 +591,20 @@ class SquadPlanApp:
         top_squads: int = 5,
         plan_steps: int = 10,
         eligibility: str = "best_effort",
+        report_style: str = "quick",
     ) -> str:
         try:
             self.progress.update(f"Fetching player data for ally code: {ally_code}...")
             player_data = self.service.get_player(ally_code)
             self.progress.update(
-                f"Building squad plan (top_squads={top_squads}, steps={plan_steps}, eligibility={eligibility})..."
+                f"Building squad plan (top_squads={top_squads}, steps={plan_steps}, eligibility={eligibility}, report={report_style})..."
             )
             return self.advisor.recommend_for_account(
                 player=player_data,
                 top_squads=top_squads,
                 plan_steps=plan_steps,
                 eligibility=eligibility,
+                report_style=report_style,
             )
         except requests.exceptions.RequestException as e:
             raise AppExecutionError(f"Error fetching data: {e}") from e
@@ -678,11 +680,12 @@ def print_usage():
     print("                            --target: Character or ship name to focus")
     print("                            --top: Number of node suggestions to show (default: 8)")
     print()
-    print("  squad_plan|squad-plan <ally_code> [--top-squads N] [--steps N] [--eligibility MODE]")
+    print("  squad_plan|squad-plan <ally_code> [--top-squads N] [--steps N] [--eligibility MODE] [--report STYLE]")
     print("                            Recommend account-wide squads with exact owned memberships")
     print("                            --top-squads: Number of squads to rank (default: 5)")
     print("                            --steps: Number of Do 1-N plan actions (default: 10)")
     print("                            --eligibility: best_effort|off (default: best_effort)")
+    print("                            --report: quick|detailed (default: quick)")
     print()
     print("Examples:")
     print("  python app.py kyrotech 123-456-789")
@@ -700,7 +703,7 @@ def print_usage():
     print('  python app.py journey-guide 123-456-789 --target "Jedi Master Kenobi"')
     print("  python app.py mod-audit 123-456-789 --top 8 --mode proving_grounds --focus both")
     print('  python app.py farm-focus 123-456-789 --target "Grand Moff Tarkin" --top 8')
-    print("  python app.py squad-plan 123-456-789 --top-squads 5 --steps 10")
+    print("  python app.py squad-plan 123-456-789 --top-squads 5 --steps 10 --report detailed")
 
 
 def run_kyrotech():
@@ -1173,11 +1176,13 @@ def run_farm_focus():
         sys.exit(1)
 
 
-def _parse_squad_plan_args() -> tuple[int, int, str]:
+def _parse_squad_plan_args() -> tuple[int, int, str, str]:
     top_squads = 5
     plan_steps = 10
     eligibility = "best_effort"
+    report_style = "quick"
     allowed_eligibility = {"best_effort", "off"}
+    allowed_report_styles = {"quick", "detailed"}
     i = 2
 
     while i < len(sys.argv):
@@ -1194,19 +1199,26 @@ def _parse_squad_plan_args() -> tuple[int, int, str]:
             eligibility = sys.argv[i + 1].lower()
             i += 2
             continue
+        if arg == "--report" and i + 1 < len(sys.argv):
+            report_style = sys.argv[i + 1].lower()
+            i += 2
+            continue
         i += 1
 
     if eligibility not in allowed_eligibility:
         raise ValueError("invalid --eligibility. Expected one of: best_effort, off")
-    return top_squads, plan_steps, eligibility
+    if report_style not in allowed_report_styles:
+        raise ValueError("invalid --report. Expected one of: quick, detailed")
+    return top_squads, plan_steps, eligibility, report_style
 
 
 def run_squad_plan():
     """Entry point for squad-plan CLI command."""
     if len(sys.argv) < 2:
-        print("Usage: squad-plan <ally_code> [--top-squads N] [--steps N] [--eligibility MODE]")
+        print("Usage: squad-plan <ally_code> [--top-squads N] [--steps N] [--eligibility MODE] [--report STYLE]")
         print("Eligibility: best_effort, off")
-        print("Example: squad-plan 123-456-789 --top-squads 5 --steps 10")
+        print("Report styles: quick, detailed")
+        print("Example: squad-plan 123-456-789 --top-squads 5 --steps 10 --report detailed")
         sys.exit(1)
 
     if not SWGOH_API_KEY:
@@ -1216,7 +1228,7 @@ def run_squad_plan():
 
     ally_code = sys.argv[1]
     try:
-        top_squads, plan_steps, eligibility = _parse_squad_plan_args()
+        top_squads, plan_steps, eligibility, report_style = _parse_squad_plan_args()
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -1228,6 +1240,7 @@ def run_squad_plan():
             top_squads=top_squads,
             plan_steps=plan_steps,
             eligibility=eligibility,
+            report_style=report_style,
         )
         print(output)
     except AppExecutionError as e:

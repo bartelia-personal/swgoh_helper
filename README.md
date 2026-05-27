@@ -268,6 +268,7 @@ Options:
 uv run squad-plan 123-456-789 --top-squads 5
 uv run squad-plan 123-456-789 --steps 12
 uv run squad-plan 123-456-789 --eligibility off
+uv run squad-plan 123-456-789 --report detailed
 ```
 
 What it does:
@@ -275,6 +276,10 @@ What it does:
 - outputs ranked squads with exact member lists from your owned roster
 - shows owned profile coverage per squad (for example `4/5` members owned)
 - generates an account-wide `Do 1-N` improvement plan from top mod gaps
+
+Report styles:
+- `quick` (default): compact overview with ranked squads and `Do 1-N` plan
+- `detailed`: includes squad weakness breakdowns and per-character `Needs/How` execution guidance between plan lines
 
 ### Target Farm Focus
 

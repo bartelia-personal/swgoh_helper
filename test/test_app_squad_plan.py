@@ -12,11 +12,19 @@ class _FakeService:
 
 
 class _FakeAdvisor:
-    def recommend_for_account(self, player, top_squads=5, plan_steps=10, eligibility="best_effort"):
+    def recommend_for_account(
+        self,
+        player,
+        top_squads=5,
+        plan_steps=10,
+        eligibility="best_effort",
+        report_style="quick",
+    ):
         self.player = player
         self.top_squads = top_squads
         self.plan_steps = plan_steps
         self.eligibility = eligibility
+        self.report_style = report_style
         return "squad-plan"
 
 
@@ -31,6 +39,7 @@ def test_squad_plan_app_fetches_player_and_formats_report():
         top_squads=4,
         plan_steps=7,
         eligibility="off",
+        report_style="detailed",
     )
 
     assert output == "squad-plan"
@@ -38,3 +47,4 @@ def test_squad_plan_app_fetches_player_and_formats_report():
     assert app.advisor.top_squads == 4
     assert app.advisor.plan_steps == 7
     assert app.advisor.eligibility == "off"
+    assert app.advisor.report_style == "detailed"

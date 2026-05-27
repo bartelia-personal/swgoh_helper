@@ -29,6 +29,7 @@ class SquadPlanAdvisor:
         top_squads: int = 5,
         plan_steps: int = 10,
         eligibility: str = "best_effort",
+        report_style: str = "quick",
     ) -> str:
         reports = self._build_mode_reports(player, eligibility)
         if not reports:
@@ -46,7 +47,9 @@ class SquadPlanAdvisor:
         ]
         lines.extend(self._squad_membership_lines(ranked_squads, aggregate))
         lines.extend(self._action_plan_lines(ranked_squads, aggregate, plan_steps))
-        lines.extend(self._how_to_improve_lines(ranked_squads, aggregate))
+        if report_style == "detailed":
+            lines.extend(self._how_to_improve_lines(ranked_squads, aggregate))
+            lines.extend(self._detailed_execution_lines(ranked_squads, aggregate, plan_steps))
         return "\n".join(lines)
 
     def _build_mode_reports(self, player, eligibility: str) -> list:
@@ -211,7 +214,87 @@ class SquadPlanAdvisor:
                 lines.append(f"- {item}")
         if len(lines) == 1:
             lines.append("- No specific weak mod patterns found.")
+        lines.append("")
         return lines
+
+    def _detailed_execution_lines(
+        self,
+        ranked_squads: list[dict],
+        aggregate: dict,
+        plan_steps: int,
+    ) -> list[str]:
+        entries = self._build_action_entries(ranked_squads, aggregate, plan_steps)
+        if not entries:
+            return ["Detailed execution plan", "- No detailed steps available."]
+        lines = ["Detailed execution plan"]
+        current_squad = None
+        for entry in entries:
+            if entry["squad"] != current_squad:
+                current_squad = entry["squad"]
+                lines.append(current_squad)
+            lines.append(f"- {entry['action']}")
+            lines.append("  Needs/How:")
+            for need in self._unit_needs_lines(entry["base_id"], entry["message"]):
+                lines.append(f"  - {need}")
+        return lines
+
+    def _build_action_entries(
+        self,
+        ranked_squads: list[dict],
+        aggregate: dict,
+        plan_steps: int,
+    ) -> list[dict[str, str]]:
+        entries: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for ranking in ranked_squads:
+            squad = ranking["squad"]
+            candidates = self._ranked_unit_ids_for_squad(squad, aggregate)
+            for base_id in candidates:
+                unit_name = aggregate["unit_names"][base_id]
+                for message in aggregate["findings"][base_id]:
+                    action = self._finding_to_action(unit_name, message)
+                    action_key = f"{squad}:{action}"
+                    if not action or action_key in seen:
+                        continue
+                    seen.add(action_key)
+                    entries.append(
+                        {
+                            "squad": squad,
+                            "base_id": base_id,
+                            "unit_name": unit_name,
+                            "action": action,
+                            "message": message,
+                        }
+                    )
+                    break
+                if len(entries) >= plan_steps:
+                    return entries
+        return entries
+
+    def _unit_needs_lines(self, base_id: str, message: str) -> list[str]:
+        profile = self.recommender.profiles.get(base_id)
+        if profile is None:
+            return ["Prioritize speed secondaries and complete missing set bonuses."]
+        target_sets = getattr(profile, "target_sets", [])
+        if not target_sets:
+            return ["Prioritize speed secondaries and complete missing set bonuses."]
+        target_sets_text = ", ".join(target_sets)
+        needs = [f"Target sets: {target_sets_text}."]
+        recommended_primaries = getattr(profile, "recommended_primaries", {})
+        arrow = recommended_primaries.get(3)
+        if arrow:
+            needs.append(f"Arrow primary: {arrow}.")
+        if re.match(r"Speed\s+(\d+)\s+is below the\s+(\d+)\s+target\.", message):
+            needs.append("Prioritize speed secondaries on all six mods.")
+        if re.match(r"Missing\s+(\d+)\s+equipped mods\.", message):
+            needs.append("Fill empty slots first, then replace the weakest placeholders.")
+        slot_specific = re.match(r"(.+) has (.+) primary; target is (.+)\.", message)
+        if slot_specific:
+            needs.append(f"Swap {slot_specific.group(1)} to {slot_specific.group(3)} primary.")
+        missing_primary = re.match(r"(.+) is missing; target primary is (.+)\.", message)
+        if missing_primary:
+            needs.append(f"Equip {missing_primary.group(1)} with {missing_primary.group(2)} primary.")
+        return needs
 
     def _squad_weakness_lines(self, squad: str, aggregate: dict) -> list[str]:
         candidates = self._ranked_unit_ids_for_squad(squad, aggregate)
